@@ -127,7 +127,7 @@
   <div class="status" id="status">Cargando…</div>
 </div>
 
-<p class="eyebrow">Últimos 7 días</p>
+<p class="eyebrow">Esta semana</p>
 <div class="week" id="week"></div>
 <p class="avg" id="avg"></p>
 
@@ -240,18 +240,22 @@ async function cargarDia(){
 }
 
 async function cargarSemana(){
-  const desde = new Date(); desde.setDate(desde.getDate()-6);
+  const hoyD = new Date();
+  const diaSem = hoyD.getDay();
+  const offset = diaSem === 0 ? 6 : diaSem - 1;
+  const lunes = new Date(); lunes.setDate(lunes.getDate() - offset);
+  const domingo = new Date(lunes); domingo.setDate(domingo.getDate() + 6);
   let rows = [];
   try {
-    rows = await api(`proteina_registros?select=fecha,gramos&persona=eq.${encodeURIComponent(who)}&fecha=gte.${iso(desde)}&fecha=lte.${hoy()}`);
+    rows = await api(`proteina_registros?select=fecha,gramos&persona=eq.${encodeURIComponent(who)}&fecha=gte.${iso(lunes)}&fecha=lte.${iso(domingo)}`);
     flagOffline(false);
   } catch(e) { flagOffline(true); }
   const acum = {};
   rows.forEach(r => { acum[r.fecha] = (acum[r.fecha]||0) + r.gramos; });
   semana = [];
-  for (let i=6; i>=0; i--){
-    const d = new Date(); d.setDate(d.getDate()-i);
-    semana.push({ fecha: iso(d), dia: d.getDay(), total: acum[iso(d)] || 0 });
+  for (let i=0; i<7; i++){
+    const d = new Date(lunes); d.setDate(d.getDate()+i);
+    semana.push({ fecha: iso(d), dia: d.getDay(), total: acum[iso(d)] || 0, futuro: iso(d) > hoy() });
   }
 }
 
@@ -281,20 +285,20 @@ function pintarEscala(){
 function pintarSemana(){
   const goal = goals[who] || 160;
   const L = ['D','L','M','M','J','V','S'];
-  $('week').innerHTML = semana.map((s,i) => {
-    const esHoy = i === 6;
+  $('week').innerHTML = semana.map(s => {
+    const esHoy = s.fecha === hoy();
     const v = esHoy ? total() : s.total;
-    const cls = esHoy ? 'today' : (v >= goal ? 'hit' : (v > 0 ? 'miss' : ''));
+    const cls = esHoy ? 'today' : (s.futuro ? '' : (v >= goal ? 'hit' : (v > 0 ? 'miss' : '')));
     return `<div class="day ${cls}"><div class="d">${L[s.dia]}</div>
-      <div class="v">${v}</div>
-      <div class="track"><i style="width:${Math.min(100,(v/goal)*100)}%"></i></div></div>`;
+      <div class="v">${s.futuro ? '·' : v}</div>
+      <div class="track"><i style="width:${s.futuro ? 0 : Math.min(100,(v/goal)*100)}%"></i></div></div>`;
   }).join('');
-  const vals = semana.map((s,i) => i === 6 ? total() : s.total);
+  const vals = semana.filter(s => !s.futuro).map(s => s.fecha === hoy() ? total() : s.total);
   const hechos = vals.filter(v => v > 0);
   const prom = hechos.length ? Math.round(hechos.reduce((a,b)=>a+b,0)/hechos.length) : 0;
   const cumplidos = vals.filter(v => v >= goal).length;
   $('avg').innerHTML = hechos.length
-    ? `Promedio <b>${prom} g</b> · objetivo cumplido <b>${cumplidos} de 7</b> días`
+    ? `Promedio <b>${prom} g</b> · objetivo cumplido <b>${cumplidos} de ${vals.length}</b> días`
     : 'Sin registros esta semana todavía.';
 }
 function pintarLog(){
