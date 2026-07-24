@@ -52,16 +52,6 @@
   .status { margin-top: 13px; font-size: 12.5px; color: var(--dim); line-height: 1.45; }
   .status b { color: var(--blue); font-weight: 600; }
 
-  .daynav { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-  .daynav .arrow { background: var(--card); border: 1px solid var(--line); color: var(--text);
-    border-radius: 8px; width: 36px; height: 36px; font-size: 20px; line-height: 1; display: grid; place-items: center; }
-  .daynav .arrow:disabled { opacity: .3; }
-  .daynav .arrow:not(:disabled):active { transform: scale(.94); }
-  .daynav .lbl { font-size: 13px; font-weight: 600; min-width: 96px; text-align: center; text-transform: capitalize; }
-  .daynav .today-btn { margin-left: auto; background: var(--card); border: 1px solid var(--line); color: var(--blue);
-    border-radius: 8px; padding: 0 14px; height: 36px; font-size: 12px; font-weight: 600; }
-  .daynav .today-btn[hidden] { display: none; }
-
   .week { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin-bottom: 10px; }
   .day { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 3px 7px; text-align: center; }
   .day.today { border-color: var(--blue); }
@@ -132,13 +122,6 @@
 
 <div class="offline" id="offline">Sin conexión con el servidor. Los cambios no se están guardando.</div>
 
-<div class="daynav">
-  <button class="arrow" id="dPrev" aria-label="Día anterior">‹</button>
-  <span class="lbl" id="dLabel">Hoy</span>
-  <button class="arrow" id="dNext" aria-label="Día siguiente">›</button>
-  <button class="today-btn" id="dToday" hidden>Ir a hoy</button>
-</div>
-
 <div class="scale">
   <div class="readout">
     <span class="grams" id="grams">0</span>
@@ -198,9 +181,9 @@ async function api(path, opts = {}) {
 
 const DB = {
   "Carnes": [
-    ["Pechuga de pollo","100 g",25],["Pollo (muslo)","100 g",21],
-    ["Carne vacuna","100 g",20],["Carne picada","100 g",19],["Cerdo","100 g",20],
-    ["Milanesa de carne","1 unidad",14],["Milanesa de pollo","1 unidad",16],
+    ["Pechuga de pollo","100 g",25],["Pata muslo de pollo","1 pata muslo",22],
+    ["Carne vacuna","100 g",20],["Carne de cerdo","100 g",20],
+    ["Carne picada","100 g",19],["Milanesa","1 unidad",13],
     ["Jamón crudo","50 g",12],["Jamón cocido","50 g",9]
   ],
   "Huevo y lácteos": [
@@ -215,7 +198,7 @@ const DB = {
   ],
   "Legumbres y granos": [
     ["Lentejas cocidas","200 g",17],["Garbanzos cocidos","200 g",16],["Porotos cocidos","200 g",15],
-    ["Tofu","150 g",12],["Avena","60 g",8],["Quinoa cocida","150 g",6],
+    ["Avena","60 g",8],["Quinoa cocida","150 g",6],
     ["Frutos secos","30 g",6],["Mantequilla de maní","30 g",7],["Chía","30 g",5],
     ["Arroz cocido","200 g",5],["Pan masa madre","1 rodaja",4]
   ],
@@ -349,13 +332,7 @@ function pintarLog(){
     : entries.map(e => `<div class="log-row"><span class="nm">${e.alimento}</span><span class="g">${e.gramos}</span>
         <button class="x" data-del="${e.id}" aria-label="Borrar">×</button></div>`).join('');
 }
-function pintarNav(){
-  $('dLabel').textContent = etiquetaDia(fechaActiva);
-  const esHoy = fechaActiva === hoy();
-  $('dNext').disabled = esHoy;
-  $('dToday').hidden = esHoy;
-}
-function pintarTodo(){ pintarNav(); pintarEscala(); pintarSemana(); pintarLog(); }
+function pintarTodo(){ pintarEscala(); pintarSemana(); pintarLog(); }
 
 async function cambiarDia(nuevaFecha){
   if (nuevaFecha > hoy()) return;
@@ -382,9 +359,6 @@ $('who').onclick = async e => {
   $('goalInput').value = goals[who];
   await cargarDia(); await cargarSemana(); pintarTodo();
 };
-$('dPrev').onclick = () => cambiarDia(addDias(fechaActiva, -1));
-$('dNext').onclick = () => cambiarDia(addDias(fechaActiva, 1));
-$('dToday').onclick = () => cambiarDia(hoy());
 $('week').onclick = e => { const b = e.target.closest('[data-fecha]'); if(!b) return; cambiarDia(b.dataset.fecha); };
 $('cats').onclick = e => { const b = e.target.closest('[data-cat]'); if(!b) return; cat = b.dataset.cat; pintarCats(); pintarFoods(); };
 $('foods').onclick = e => { const b = e.target.closest('[data-food]'); if(!b) return; const [n,p,g] = DB[cat][+b.dataset.food]; sumar(`${n} · ${p}`, g); };
@@ -411,7 +385,7 @@ $('goalInput').addEventListener('change', async () => {
   const fechaTxt = new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})
     .replace(/^\w/, c => c.toUpperCase());
   $('foot').textContent = SOLO ? `${fechaTxt} · Portal de ${who}` : `${fechaTxt} · Los dos ven los mismos datos.`;
-  pintarQuien(); pintarCats(); pintarFoods(); pintarNav();
+  pintarQuien(); pintarCats(); pintarFoods();
   await cargarObjetivos();
   $('goalInput').value = goals[who];
   await cargarDia(); await cargarSemana(); pintarTodo();
